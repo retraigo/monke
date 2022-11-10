@@ -43,21 +43,25 @@ export class Color {
     const max = this.max;
     const c = this.chroma;
     // No color
-    if(!c) return 0;
+    if (!c) return 0;
     const r = this.r / 255;
     const g = this.g / 255;
     const b = this.b / 255;
-    return (max === r ? (g - b) / c : max === g ? ((b - r) / c) + 2 : ((r - g) / c) + 4) / 6;
+    return (max === r
+      ? (g - b) / c
+      : max === g
+      ? ((b - r) / c) + 2
+      : ((r - g) / c) + 4) / 6;
   }
   get saturation() {
     const c = this.chroma;
     const l = this.lightness;
     // No color
-    if(!c) return 0;
+    if (!c) return 0;
     return this.max / (l < 0.5 ? 1 - l : l);
-  };
+  }
   get lightness() {
-    return (this.max + this.min) / 2
+    return (this.max + this.min) / 2;
   }
   get hex() {
     return `#${Color.toHex(this.r)}${Color.toHex(this.g)}${
