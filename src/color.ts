@@ -93,7 +93,7 @@ export class Color {
   }
   /** Calculate luminosity */
   get luminosity(): number {
-    return ((this.r * 0.21) + (this.g * 0.72) + (this.b * 0.07)) / 3;
+    return (((this.r * 0.21) + (this.g * 0.72) + (this.b * 0.07)) / 3) / 255;
   }
   get max(): number {
     return Math.max(this.r / 255, this.g / 255, this.b / 255);
@@ -141,3 +141,4 @@ export function reducePalette(colors: Color[], extractCount: number): Color[] {
   }
   return colors;
 }
+
