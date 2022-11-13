@@ -2,32 +2,38 @@ import {
   contentType,
   parseMediaType,
 } from "https://deno.land/std@0.163.0/media_types/mod.ts";
+
 import {
   createCanvas,
-  Image,
-} from "https://deno.land/x/skia_canvas@0.2.0/mod.ts";
+  loadImage,
+} from "https://deno.land/x/canvas@v1.4.1/mod.ts";
 import { Color } from "./mod.ts";
 
 export async function getPixels(path: string) {
   const data = /https?:\/\/.+/.test(path)
     ? await getImageFromWeb(path)
     : await getImageFromLocal(path);
-  const image = new Image(data.data);
+  const image = await loadImage(data.data);
 
-  const canvas = createCanvas(image.width, image.height);
+  const canvas = createCanvas(image.width(), image.height());
 
   const ctx = canvas.getContext("2d");
 
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-  const d = canvas.pixels;
-  const colors = [];
+  const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const colors: Color[] = new Array(d.length / 4);
   let i = 0;
 
   while (i < d.length) {
-    colors.push(new Color(d[i], d[i + 1], d[i + 2], d[i + 3] / 255));
+    colors[i / 4] = new Color(
+      d[i],
+      d[i + 1],
+      d[i + 2],
+      d[i + 3],
+    );
     i += 4;
   }
-  return colors;
+  return { pixels: colors, width: canvas.width };
 }
 
 async function getImageFromWeb(path: string) {
