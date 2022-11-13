@@ -1,5 +1,7 @@
 import { Color } from "./color.ts";
 
+// USES Floyd–Steinberg Dithering algorithm
+
 /*
 const palette = [
   new Color("#e3242b"),
