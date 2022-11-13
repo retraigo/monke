@@ -94,10 +94,10 @@ export class Color {
     return (((this.r * 0.21) + (this.g * 0.72) + (this.b * 0.07)) / 3) / 255;
   }
   get max(): number {
-    return Math.max(this.r / 255, this.g / 255, this.b / 255);
+    return Math.max(this.r, this.g, this.b) / 255;
   }
   get min(): number {
-    return Math.min(this.r / 255, this.g / 255, this.b / 255);
+    return Math.min(this.r, this.g, this.b) / 255;
   }
   get saturation() {
     const c = this.chroma;
