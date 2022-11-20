@@ -1,16 +1,38 @@
-import { getPixels } from "./pixels.ts";
+export interface ColorData {
+  /** RGBA */
+  rgba: [number, number, number, number];
+  /** Hue,  Saturation, Lightness */
+  hsl: [number, number, number];
+  /** Hue,  Saturation, Value */
+  hsv: [number, number, number];
+  /** Cyan, Magenta, Yellow, Black */
+  cmyk: [number, number, number, number];
+  /** Chroma */
+  c: number;
+  /** Luminosity */
+  lum: number;
+  /** Hexadecimal representation of the color */
+  hex: string;
+}
 
+/** General class for RGBA colors */
 export class Color {
+  /** Red value of color */
   r: number;
+  /** Green value of color */
   g: number;
+  /** Blue value of color */
   b: number;
+  /** Alpha (opacity) of color */
   a: number;
+  /** Construct a color from hex code */
   constructor(hex: string);
-  constructor(r: number, g: number, b: number, a: number);
+  /** Construct a color from rgba values */
+  constructor(r: number, g: number, b: number, a?: number);
   constructor(rOrHex: number | string, g?: number, b?: number, a = 255) {
-    let red = 0, green = 0, blue = 0, alpha = 1;
+    let red = 0, green = 0, blue = 0, alpha = 255;
     if (typeof rOrHex === "string") {
-      if (!/^#([A-Fa-f0-9]{3}){1,2}[A-Fa-f0-9]{2}?$/.test(rOrHex)) {
+      if (!/^#([A-Fa-f0-9]{3}){1,2}([A-Fa-f0-9]{2})?$/.test(rOrHex)) {
         throw new TypeError(`Expected number or hex code. Got ${rOrHex}`);
       }
       let colors = rOrHex.slice(1).split("");
@@ -24,11 +46,12 @@ export class Color {
           colors[2],
         ];
       }
+      // Convert hexadecimal to decimal
       red = parseInt(`${colors[0]}${colors[1]}`, 16) || 0;
       green = parseInt(`${colors[2]}${colors[3]}`, 16) || 0;
       blue = parseInt(`${colors[4]}${colors[5]}`, 16) || 0;
       if (colors[6] && colors[7]) {
-        blue = parseInt(`${colors[6]}${colors[7]}`, 16) ?? 255;
+        alpha = parseInt(`${colors[6]}${colors[7]}`, 16) ?? 255;
       }
     } else {
       red = rOrHex || 0;
@@ -41,13 +64,20 @@ export class Color {
     this.b = blue;
     this.a = alpha;
   }
-  /** Get the average of all colors */
+  /** Get the average of all colors
+   * Can also be used instead of `grayscale` using
+   * ```ts
+   * const color = new Color(r, g, b, a);
+   * const avg = color.average;
+   * const grayscaleColor = new Color(avg, avg, avg, a);
+   * ```
+   */
   get average() {
-    return (this.r + this.g + this.b) / 3;
+    return Math.trunc((this.r + this.g + this.b) / 3);
   }
   /** Calculate chroma */
   get chroma() {
-    return this.max - this.min;
+    return (this.max - this.min);
   }
   /**
    * Convert to grayscale using luminosity
@@ -55,13 +85,13 @@ export class Color {
   get grayscale(): Color {
     // Can alternatively be done using
     // this.lightness and this.average
-    const l = this.luminosity * 255;
+    const l = Math.trunc(this.luminosity * 255);
     return new Color(l, l, l, this.a);
   }
   get hex() {
     return `#${Color.toHex(this.r)}${Color.toHex(this.g)}${
       Color.toHex(this.b)
-    }${Color.toHex(this.a * 255)}`;
+    }${Color.toHex(this.a)}`;
   }
   /** Calculate hue using chroma */
   get hue() {
@@ -72,39 +102,80 @@ export class Color {
     const r = this.r / 255;
     const g = this.g / 255;
     const b = this.b / 255;
-    return (max === r
-      ? (g - b) / c
-      : max === g
-      ? ((b - r) / c) + 2
-      : ((r - g) / c) + 4) / 6;
+    const hue =
+      (max === r
+        ? (g - b) / c
+        : max === g
+        ? ((b - r) / c) + 2
+        : ((r - g) / c) + 4);
+    if (hue < 0) return (hue * 60) + 360;
+    return hue * 60;
   }
   /**
    * Get lightness of image. Can also be used instead of `grayscale` using
    * ```ts
    * const color = new Color(r, g, b, a);
-   * const l = color.lightness;
+   * const l = color.lightness * 255;
    * const grayscaleColor = new Color(l, l, l, a);
    * ```
    */
   get lightness() {
-    return (this.max + this.min) / 2;
+    return ((this.max + this.min) / 2);
   }
   /** Calculate luminosity */
   get luminosity(): number {
     return (((this.r * 0.21) + (this.g * 0.72) + (this.b * 0.07)) / 3) / 255;
   }
+  /** Get maximum of r, g, b */
   get max(): number {
     return Math.max(this.r, this.g, this.b) / 255;
   }
+  /** Get minimum of r, g, b */
   get min(): number {
     return Math.min(this.r, this.g, this.b) / 255;
   }
+  /** Get saturation */
   get saturation() {
     const c = this.chroma;
     const l = this.lightness;
     // No color
     if (!c) return 0;
-    return this.max / (l < 0.5 ? 1 - l : l);
+    return (this.max - l) / Math.min(l, 1 - l);
+  }
+  /** Get a detailed conversion of the color. */
+  toJSON(): ColorData {
+    const r = this.r / 255;
+    const g = this.g / 255;
+    const b = this.b / 255;
+
+    const k = 1 - Math.max(r, g, b);
+    const max = this.max;
+
+    const l = this.lightness;
+    const s = this.saturation;
+    const v = (l + (s * Math.min(l, 1 - l)));
+    return {
+      rgba: [this.r, this.g, this.b, this.a],
+      hsl: [
+        Math.round(this.hue),
+        Math.round(s * 100),
+        Math.round(this.lightness * 100),
+      ],
+      hsv: [
+        Math.round(this.hue),
+        !v ? 0 : Math.round((2 * (1 - (l / v))) * 100),
+        Math.round(v * 100),
+      ],
+      c: Math.round(this.chroma * 100),
+      lum: Math.round(this.luminosity * 100),
+      cmyk: [
+        Math.round(((1 - r - k) / max) * 100),
+        Math.round(((1 - g - k) / max) * 100),
+        Math.round(((1 - b - k) / max) * 100),
+        Math.round(k * 100),
+      ],
+      hex: this.a === 255 ? this.hex.slice(0, 7) : this.hex,
+    };
   }
   toString(): string {
     return `rgba(${this.r},${this.g},${this.b},${this.a / 255})`;
@@ -114,11 +185,7 @@ export class Color {
   }
 }
 
-export async function getProminentColor(path: string, extractCount: number) {
-  const { pixels: colors } = await getPixels(path);
-  return reducePalette(colors, extractCount);
-}
-
+/** Calculate mean distance between two colors */
 export function meanDistance(from: Color, to: Color): number {
   return (
     (
@@ -128,113 +195,4 @@ export function meanDistance(from: Color, to: Color): number {
       Math.abs(from.a - to.a)
     ) / 255
   ) / 4;
-}
-
-export function reducePalette(colors: Color[], extractCount: number): Color[] {
-  if (!colors.length) {
-    throw new RangeError("There must be at least one color in the palette.");
-  }
-  if (extractCount < 1) {
-    throw new RangeError("Cannot extract less than one color.");
-  }
-  return colors;
-}
-
-export class ColorHistogram {
-  #data: Uint32Array;
-  constructor() {
-    this.#data = new Uint32Array(32768);
-  }
-  #getIndex(hex: string) {
-    const data = new Color(hex);
-    // ignore alpha
-    const index = (data.r << (10)) + (data.g << 5) + data.b;
-    return index;
-  }
-  get(hex: string): number {
-    const index = this.#getIndex(hex);
-    return this.#data[index];
-  }
-  add(hex: string, amount: number): number {
-    const index = this.#getIndex(hex);
-    return Atomics.add(this.#data, index, amount);
-  }
-  get raw(): Uint32Array {
-    return this.#data;
-  }
-}
-
-export interface ColorRange {
-  r: { min: number; max: number };
-  g: { min: number; max: number };
-  b: { min: number; max: number };
-}
-
-/** Get the minimum and maximum RGB values. */
-export function getColorRange(
-  colors: Color[],
-): ColorRange {
-  const range = {
-    r: { min: 255, max: 0 },
-    g: { min: 255, max: 0 },
-    b: { min: 255, max: 0 },
-  };
-  let i = 0;
-  while (i < colors.length) {
-    if (colors[i].r < range.r.min) range.r.min = colors[i].r;
-    if (colors[i].r > range.r.max) range.r.max = colors[i].r;
-
-    if (colors[i].g < range.g.min) range.g.min = colors[i].g;
-    if (colors[i].g > range.g.max) range.g.max = colors[i].g;
-
-    if (colors[i].b < range.b.min) range.b.min = colors[i].b;
-    if (colors[i].b > range.b.max) range.b.max = colors[i].b;
-
-    i += 1;
-  }
-  return range;
-}
-
-/** Get a histogram of frequency of colors. */
-export function getHistogram(colors: Color[]): ColorHistogram {
-  const histo = new ColorHistogram();
-  let i = 0;
-  while (i < colors.length) {
-    const hIndex = colors[i].hex;
-    histo.add(hIndex, 1);
-    i += 1;
-  }
-  return histo;
-}
-
-// USES Floyd–Steinberg Dithering algorithm
-// Only supports monochrome dither for now.
-
-/** Dither the colors */
-export function monochromeDither(pixels: Color[], width: number): Color[] {
-  let i = 0;
-  while (i < (pixels.length - width - 1)) {
-    // optional: produce an eldtritch horror by making the image grayscale
-    //    const avg = (pixels[i].r + pixels[i].g + pixels[i].b) / 3
-    //    pixels[i].b = pixels[i].g = pixels[i].r = avg;
-
-    // Gray
-    const newR = pixels[i].r < 129 ? 0 : 255;
-
-    const errR = Math.floor((pixels[i].r - newR) / 16);
-
-    pixels[i].r = newR;
-
-    pixels[i + 1].r += errR * 7;
-    pixels[i + width - 1].r += errR * 3;
-    pixels[i + width].r += errR * 5;
-    pixels[i + width + 1].r += errR * 1;
-
-    pixels[i].b = pixels[i].g = pixels[i].r;
-
-    //    console.log(pixels[i + 1].r)
-
-    i += 1;
-  }
-  return pixels;
 }
