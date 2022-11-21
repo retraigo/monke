@@ -111,6 +111,9 @@ export class Color {
     if (hue < 0) return (hue * 60) + 360;
     return hue * 60;
   }
+  get invert() {
+    return new Color(255 - this.r, 255 - this.g, 255 - this.b, this.a);
+  }
   /**
    * Get lightness of image. Can also be used instead of `grayscale` using
    * ```ts
