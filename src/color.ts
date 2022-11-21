@@ -127,7 +127,12 @@ export class Color {
   }
   /** Calculate luminance */
   get luminance(): number {
-    return (((this.r * 0.21) + (this.g * 0.72) + (this.b * 0.07)) / 3) / 255;
+    const r = Color.toLinear(this.r / 255);
+    const g = Color.toLinear(this.g / 255);
+    const b = Color.toLinear(this.b / 255);
+    return Math.sqrt(0.299 * r * r + 0.587 * g * g + 0.114 * b * b);
+    // the below can also be used for faster, less accurate computing
+    // return ((this.r * 0.2126) + (this.g * 0.7152) + (this.b * 0.0722)) / 255;
   }
   /** Get maximum of r, g, b */
   get max(): number {
@@ -136,6 +141,15 @@ export class Color {
   /** Get minimum of r, g, b */
   get min(): number {
     return Math.min(this.r, this.g, this.b) / 255;
+  }
+  /** Get perceived lightness */
+  get perceivedLightness(): number {
+    const lum = this.luminance;
+    if (lum <= (216 / 24389)) {
+      return lum * (24389 / 27);
+    }
+
+    return Math.pow(lum, 1 / 3) * 116 - 16;
   }
   /** Get saturation */
   get saturation() {
@@ -182,6 +196,13 @@ export class Color {
   }
   toString(): string {
     return `rgba(${this.r},${this.g},${this.b},${this.a / 255})`;
+  }
+  static toLinear(sRGB: number): number {
+    if (sRGB <= 0.04045) {
+      return sRGB / 12.92;
+    } else {
+      return Math.pow((sRGB + 0.055) / 1.055, 2.4);
+    }
   }
   static toHex(n: number): string {
     return `${(n | 1 << 8).toString(16).slice(1)}`;
