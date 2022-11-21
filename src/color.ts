@@ -9,7 +9,7 @@ export interface ColorData {
   cmyk: [number, number, number, number];
   /** Chroma */
   c: number;
-  /** Luminosity */
+  /** luminance */
   lum: number;
   /** Hexadecimal representation of the color */
   hex: string;
@@ -80,12 +80,12 @@ export class Color {
     return (this.max - this.min);
   }
   /**
-   * Convert to grayscale using luminosity
+   * Convert to grayscale using luminance
    */
   get grayscale(): Color {
     // Can alternatively be done using
     // this.lightness and this.average
-    const l = Math.trunc(this.luminosity * 255);
+    const l = Math.trunc(this.luminance * 255);
     return new Color(l, l, l, this.a);
   }
   get hex() {
@@ -125,8 +125,8 @@ export class Color {
   get lightness() {
     return ((this.max + this.min) / 2);
   }
-  /** Calculate luminosity */
-  get luminosity(): number {
+  /** Calculate luminance */
+  get luminance(): number {
     return (((this.r * 0.21) + (this.g * 0.72) + (this.b * 0.07)) / 3) / 255;
   }
   /** Get maximum of r, g, b */
@@ -170,7 +170,7 @@ export class Color {
         Math.round(v * 100),
       ],
       c: Math.round(this.chroma * 100),
-      lum: Math.round(this.luminosity * 100),
+      lum: Math.round(this.luminance * 100),
       cmyk: [
         Math.round(((1 - r - k) / max) * 100),
         Math.round(((1 - g - k) / max) * 100),
