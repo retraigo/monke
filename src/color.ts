@@ -85,7 +85,7 @@ export class Color {
   get grayscale(): Color {
     // Can alternatively be done using
     // this.lightness and this.average
-    const l = Math.trunc(this.luminance * 255);
+    const l = Math.trunc(Color.fromLinear(this.luminance) * 255);
     return new Color(l, l, l, this.a);
   }
   get hex() {
@@ -202,6 +202,13 @@ export class Color {
       return sRGB / 12.92;
     } else {
       return Math.pow((sRGB + 0.055) / 1.055, 2.4);
+    }
+  }
+  static fromLinear(linear: number): number {
+    if (linear <= 0.0031398) {
+      return linear * 12.92;
+    } else {
+      return (Math.pow(linear, 1 / 2.4) * 1.055) - 0.055;
     }
   }
   static toHex(n: number): string {
