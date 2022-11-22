@@ -9,7 +9,8 @@ const newImg = pixels.pixels.map(x => {
   const r = x.r;
   const g = x.g;
   const b = x.b;
-  return new Color(b, Math.trunc(g / 2), r, x.a)
+  const c = new Color(Math.trunc(Math.pow(b, 1.5) / b) % 256, Math.trunc(g * 1.1010101010101) % 256, Math.trunc(r * 1.0101010101) % 256, x.a)
+  return c
 })
 
 const i = createCanvas(pixels.width, pixels.pixels.length / pixels.width);
