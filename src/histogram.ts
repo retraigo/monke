@@ -1,6 +1,9 @@
 import { Color } from "./mod.ts";
 
-/** Histogram of colors with reduced space */
+/** 
+ * Histogram of colors with reduced space 
+ * Effectively quantizes the image into 32768 colors
+ */
 export class ColorHistogram {
   #data: Uint32Array;
   constructor() {
