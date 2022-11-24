@@ -158,6 +158,74 @@ export function dither2(
   width: number,
   palette: Color[],
 ): Color[] {
+  let i = pixels.length - 1;
+  const twoW = width << 2
+  // pixels is an array of pixels with r, g, b values
+  // width is the width of the image in pixels
+  while (i >= 0) {
+
+    const newC = findClosestColor(pixels[i], palette);
+    const err = {
+      r: Math.floor((pixels[i].r - newC.r) >> 4),
+      g: Math.floor((pixels[i].r - newC.g) >> 4),
+      b: Math.floor((pixels[i].r - newC.b) >> 4),
+    };
+
+    // Match our quantized palette
+    pixels[i] = newC;
+
+    // Spread error to neighbouring pixels
+    if (i >= 1) {
+      // Spread error to next pixel
+      pixels[i - 1].r += err.r << 2;
+      pixels[i - 1].g += err.g << 2;
+      pixels[i - 1].b += err.b << 2;
+      if (i >= 2) {
+        // Spread error to next pixel
+        pixels[i - 2].r += err.r << 1;
+        pixels[i - 2].g += err.g << 1;
+        pixels[i - 2].b += err.b << 1;
+        // Spread error to lower pixels
+        const k = i - width;
+        if (k >= 2) {
+          const k = i - width;
+          pixels[k - 2].r += err.r;
+          pixels[k - 1].r += err.r << 1;
+          pixels[k].r += err.r << 1;
+          pixels[k + 1].r += err.r << 1;
+          pixels[k + 2].r += err.r;
+
+          pixels[k - 2].g += err.g;
+          pixels[k - 1].g += err.g << 1;
+          pixels[k].g += err.g << 1;
+          pixels[k + 1].g += err.g << 1;
+          pixels[k + 2].g += err.g;
+
+          pixels[k - 2].b += err.b;
+          pixels[k - 1].b += err.b << 1;
+          pixels[k].b += err.b << 1;
+          pixels[k + 1].b += err.b << 1;
+          pixels[k + 2].b += err.b;
+
+          if (i >= twoW + 1) {
+            pixels[i - twoW + 1].r += err.r << 1;
+            pixels[i - twoW + 1].g += err.g << 1;
+            pixels[i - twoW + 1].b += err.b << 1;
+          }
+        }
+      }
+    }
+    i -= 1;
+  }
+  return pixels;
+}
+
+/** Dither the image into a smaller palette */
+export function dither3(
+  pixels: Color[],
+  width: number,
+  palette: Color[],
+): Color[] {
   const mid = Math.trunc(pixels.length / 2);
   let i = mid;
   let j = mid + 1;
@@ -180,25 +248,25 @@ export function dither2(
       pixels[j + 1].b += err.b << 2;
       if (j < pixels.length - 2) {
         // Spread error to next pixel
-        pixels[j + 2].r += err.r * 3;
-        pixels[j + 2].g += err.g * 3;
-        pixels[j + 2].b += err.b * 3;
+        pixels[j + 2].r += err.r << 1;
+        pixels[j + 2].g += err.g << 1;
+        pixels[j + 2].b += err.b << 1;
         // Spread error to lower pixels
         if (j < pixels.length - width - 2) {
           pixels[j + width - 2].r += err.r;
           pixels[j + width - 1].r += err.r << 1;
-          pixels[j + width].r += err.r * 3;
+          pixels[j + width].r += err.r << 2;
           pixels[j + width + 1].r += err.r << 1;
           pixels[j + width + 2].r += err.r;
 
           pixels[j + width - 2].g += err.g;
           pixels[j + width - 1].g += err.g << 1;
-          pixels[j + width].g += err.g * 3;
+          pixels[j + width].g += err.g << 2;
           pixels[j + width + 1].g += err.g << 1;
           pixels[j + width + 2].g += err.g;
           pixels[j + width - 2].b += err.b;
           pixels[j + width - 1].b += err.b << 1;
-          pixels[j + width].b += err.b * 3;
+          pixels[j + width].b += err.b << 2;
           pixels[j + width + 1].b += err.b << 1;
           pixels[j + width + 2].b += err.b;
         }
