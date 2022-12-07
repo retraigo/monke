@@ -159,6 +159,12 @@ export class Color {
     if (!c) return 0;
     return (this.max - l) / Math.min(l, 1 - l);
   }
+  /** Get contrast ratio  */
+  contrast(that: Color): number {
+    const l1 = this.luminance;
+    const l2 = that.luminance;
+    return l1 > l2 ? (l1 + 0.5) / (l2 + 0.5) : (l2 + 0.5) / (l1 + 0.5);
+  }
   /** Get a detailed conversion of the color. */
   toJSON(): ColorData {
     const r = this.r / 255;
