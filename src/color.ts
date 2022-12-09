@@ -1,18 +1,32 @@
+import { fromLinear, toLinear } from "./util/linear.ts";
+
+/** Standard illuminant D65 */
+export const STANDARD_ILLUMINANT = [0.950489, 1, 1.088840];
+
+/** 6 / 29 */
+export const DELTA = 0.20689655172413793;
+export const DELTA_SQUARE = 0.04280618311533888;
+export const DELTA_CUBE = 0.008856451679035631;
+
+/** 4 / 29 */
+export const DELTA_ADD = 0.13793103448275862;
+
 export interface ColorData {
-  /** RGBA */
+  /** sRGB color space */
   rgba: [number, number, number, number];
-  /** Hue,  Saturation, Lightness */
+  /** Hue, Chroma, Grayscale */
+  hcg: [number, number, number];
+  /** Hue, Saturation, Lightness */
   hsl: [number, number, number];
-  /** Hue,  Saturation, Value */
+  /** Hue, Saturation, Value */
   hsv: [number, number, number];
   /** Cyan, Magenta, Yellow, Black */
   cmyk: [number, number, number, number];
-  /** Chroma */
-  c: number;
-  /** luminance */
-  lum: number;
   /** Hexadecimal representation of the color */
   hex: string;
+  /** CIE 1931 XYZ color space */
+  xyz: [number, number, number];
+  lab: [number, number, number];
 }
 
 /** General class for RGBA colors */
@@ -79,19 +93,63 @@ export class Color {
   get chroma() {
     return (this.max - this.min);
   }
+  get cmyk(): [number, number, number, number] {
+    const r = this.r / 255;
+    const g = this.g / 255;
+    const b = this.b / 255;
+
+    const k = 1 - Math.max(r, g, b);
+    const max = this.max;
+    return [
+      Math.round(((1 - r - k) / max) * 100),
+      Math.round(((1 - g - k) / max) * 100),
+      Math.round(((1 - b - k) / max) * 100),
+      Math.round(k * 100),
+    ];
+  }
   /**
    * Convert to grayscale using luminance
    */
   get grayscale(): Color {
     // Can alternatively be done using
     // this.lightness and this.average
-    const l = Math.trunc(Color.fromLinear(this.luminance) * 255);
+    const l = Math.trunc(fromLinear(this.luminance) * 255);
     return new Color(l, l, l, this.a);
+  }
+  get hcg(): [number, number, number] {
+    const chroma = this.chroma;
+    return [
+      Math.round(this.hue),
+      chroma,
+      chroma < 1 ? this.min / (1 - chroma) : 0,
+    ];
   }
   get hex() {
     return `#${Color.toHex(this.r)}${Color.toHex(this.g)}${
       Color.toHex(this.b)
     }${Color.toHex(this.a)}`;
+  }
+  /** Hue, Saturation, Lightness */
+  get hsl(): [number, number, number] {
+    const s = this.saturation;
+
+    return [
+      Math.round(this.hue),
+      Math.trunc((s * 10000) / 100),
+      Math.trunc((this.lightness * 10000) / 100),
+    ];
+  }
+  /** Hue, Saturation, Value */
+  get hsv(): [number, number, number] {
+    const s = this.saturation;
+    const l = this.lightness;
+    const v = (l + (s * Math.min(l, 1 - l)));
+
+    return [
+      Math.round(this.hue),
+      !v ? 0 : Math.round((2 * (1 - (l / v))) * 100),
+      Math.round(v * 100),
+    ];
   }
   /** Calculate hue using chroma */
   get hue() {
@@ -114,6 +172,20 @@ export class Color {
   get invert() {
     return new Color(255 - this.r, 255 - this.g, 255 - this.b, this.a);
   }
+  /** CIE L*a*b color space */
+  get lab(): [number, number, number] {
+    const [x, y, z] = this.xyz;
+
+    const xxn = labF(x / STANDARD_ILLUMINANT[0]);
+    const yyn = labF(y / STANDARD_ILLUMINANT[1]);
+    const zzn = labF(z / STANDARD_ILLUMINANT[2]);
+
+    return [
+      (116 * yyn) - 16,
+      500 * (xxn - yyn),
+      200 * (yyn - zzn),
+    ];
+  }
   /**
    * Get lightness of image. Can also be used instead of `grayscale` using
    * ```ts
@@ -125,14 +197,20 @@ export class Color {
   get lightness() {
     return ((this.max + this.min) / 2);
   }
+  /** Get linear rgb values */
+  get linearRgb() {
+    return [
+      toLinear(this.r / 255),
+      toLinear(this.g / 255),
+      toLinear(this.b / 255),
+    ];
+  }
   /** Calculate luminance */
   get luminance(): number {
-    const r = Color.toLinear(this.r / 255);
-    const g = Color.toLinear(this.g / 255);
-    const b = Color.toLinear(this.b / 255);
-    return Math.sqrt(0.299 * r * r + 0.587 * g * g + 0.114 * b * b);
-    // the below can also be used for faster, less accurate computing
-    // return ((this.r * 0.2126) + (this.g * 0.7152) + (this.b * 0.0722)) / 255;
+    const [r, g, b] = this.linearRgb;
+    return (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
+    // the below can also be used
+    // return Math.sqrt((0.299 * r * r) + (0.587 * g * g) + (0.114 * b * b));
   }
   /** Get maximum of r, g, b */
   get max(): number {
@@ -159,6 +237,15 @@ export class Color {
     if (!c) return 0;
     return (this.max - l) / Math.min(l, 1 - l);
   }
+  /** CIE 1931 XYZ */
+  get xyz(): [number, number, number] {
+    const [r, g, b] = this.linearRgb;
+
+    const x = (0.4124 * r) + (0.3576 * g) + (0.1805 * b);
+    const y = this.luminance;
+    const z = (0.0193 * r) + (0.1192 * g) + (0.9505 * b);
+    return [x, y, z];
+  }
   /** Get contrast ratio  */
   contrast(that: Color): number {
     const l1 = this.luminance;
@@ -167,55 +254,23 @@ export class Color {
   }
   /** Get a detailed conversion of the color. */
   toJSON(): ColorData {
-    const r = this.r / 255;
-    const g = this.g / 255;
-    const b = this.b / 255;
-
-    const k = 1 - Math.max(r, g, b);
     const max = this.max;
+    const min = this.min;
 
-    const l = this.lightness;
-    const s = this.saturation;
-    const v = (l + (s * Math.min(l, 1 - l)));
     return {
       rgba: [this.r, this.g, this.b, this.a],
-      hsl: [
-        Math.round(this.hue),
-        Math.round(s * 100),
-        Math.round(this.lightness * 100),
-      ],
-      hsv: [
-        Math.round(this.hue),
-        !v ? 0 : Math.round((2 * (1 - (l / v))) * 100),
-        Math.round(v * 100),
-      ],
-      c: Math.round(this.chroma * 100),
-      lum: Math.round(this.luminance * 100),
-      cmyk: [
-        Math.round(((1 - r - k) / max) * 100),
-        Math.round(((1 - g - k) / max) * 100),
-        Math.round(((1 - b - k) / max) * 100),
-        Math.round(k * 100),
-      ],
+      hcg: this.hcg,
+      hsl: this.hsl,
+      hsv: this.hsv,
+      cmyk: this.cmyk,
       hex: this.a === 255 ? this.hex.slice(0, 7) : this.hex,
+      xyz: this.xyz,
+      lab: this.lab,
     };
   }
+
   toString(): string {
     return `rgba(${this.r},${this.g},${this.b},${this.a / 255})`;
-  }
-  static toLinear(sRGB: number): number {
-    if (sRGB <= 0.04045) {
-      return sRGB / 12.92;
-    } else {
-      return Math.pow((sRGB + 0.055) / 1.055, 2.4);
-    }
-  }
-  static fromLinear(linear: number): number {
-    if (linear <= 0.0031398) {
-      return linear * 12.92;
-    } else {
-      return (Math.pow(linear, 1 / 2.4) * 1.055) - 0.055;
-    }
   }
   static toHex(n: number): string {
     return `${(n | 1 << 8).toString(16).slice(1)}`;
@@ -232,4 +287,10 @@ export function meanDistance(from: Color, to: Color): number {
       Math.abs(from.a - to.a)
     ) / 255
   ) / 4;
+}
+
+/** t = C / Cn ratio */
+function labF(t: number): number {
+  if (t > DELTA_CUBE) return Math.cbrt(t);
+  return (t / (3 * DELTA_SQUARE)) + DELTA_ADD;
 }
