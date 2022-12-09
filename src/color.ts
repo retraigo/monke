@@ -254,9 +254,6 @@ export class Color {
   }
   /** Get a detailed conversion of the color. */
   toJSON(): ColorData {
-    const max = this.max;
-    const min = this.min;
-
     return {
       rgba: [this.r, this.g, this.b, this.a],
       hcg: this.hcg,
