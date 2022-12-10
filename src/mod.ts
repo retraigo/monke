@@ -12,3 +12,6 @@ export {
   quickDither,
   twoRowSierraDither,
 } from "./dither.ts";
+
+// For backwards compat. TODO: Remove soon
+export { Color } from "../deps/color.ts";
