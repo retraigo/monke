@@ -1,3 +1,8 @@
+/// Uses Modified Median Cut Algorithm
+/// TypeScript port of Leptonica
+/// http://www.leptonica.org/
+
+
 import { ColorHistogram, getHistogram, getPixels } from "./mod.ts";
 import { Color } from "../deps/color.ts";
 
