@@ -58,7 +58,7 @@ export function quantizeByMedianCut(
 
   let res = [vbox];
   while (res.length < extractCount) {
-    let newRes = [];
+    const newRes = [];
     let j = 0;
 
     while (j < res.length) {
@@ -73,7 +73,7 @@ export function quantizeByMedianCut(
     }
     res = newRes;
   }
-  return res.map((x) => getAverageColor(x, histo));
+  return res.map((x) => getAverageColor(x, histo)).slice(0, extractCount);
 }
 
 /** The vbox */
