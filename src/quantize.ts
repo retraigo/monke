@@ -73,6 +73,7 @@ export function quantizeByMedianCut(
     }
     res = newRes;
   }
+  res.sort((a, b) => vboxSize(b, histo) - vboxSize(a, histo))
   return res.map((x) => getAverageColor(x, histo)).slice(0, extractCount);
 }
 
