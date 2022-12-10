@@ -22,7 +22,7 @@ export function reducePalette(colors: Color[], extractCount: number): Color[] {
   const histo = getHistogram(colors);
 
   // Goodbye, popularity
-  // const res = quantizeByPopularity(histo, extractCount);
+  //const res = quantizeByPopularity(histo, extractCount);
   const res = quantizeByMedianCut(getColorRange(colors), histo, extractCount);
 
   return res;
@@ -50,18 +50,15 @@ export function quantizeByMedianCut(
   histo: ColorHistogram,
   extractCount: number,
 ): Color[] {
-  let nSteps = 0;
-  let i = 1;
-  while (i !== extractCount) {
-    i = i << 1;
-    nSteps += 1;
-  }
+
   let res = [vbox];
-  while (nSteps > 0) {
-    const newRes = [];
+  while (res.length < extractCount) {
+    let newRes = [];
     let j = 0;
+
     while (j < res.length) {
       const split = medianCut(res[j], histo);
+      console.log(typeof split)
       if (!split) {
         j += 1;
         continue;
@@ -70,7 +67,6 @@ export function quantizeByMedianCut(
       j += 1;
     }
     res = newRes;
-    nSteps -= 1;
   }
   return res.map((x) => getAverageColor(x, histo));
 }
