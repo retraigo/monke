@@ -11,11 +11,19 @@ export function reducePalette(colors: Color[], extractCount: number): Color[] {
     throw new RangeError("There must be at least one color in the palette.");
   }
   if (extractCount < 2) {
-    throw new RangeError("Cannot extract less than one color.");
+    throw new RangeError("Cannot extract less than two colors.");
+  }
+  if (extractCount > 256) {
+    throw new RangeError("Cannot extract more than 256 colors.");
+  }
+  if ((extractCount & (extractCount - 1)) !== 0) {
+    throw new RangeError("Extract count must be a power of two.");
   }
   const histo = getHistogram(colors);
 
-  const res = quantizeByPopularity(histo, extractCount);
+  // Goodbye, popularity
+  // const res = quantizeByPopularity(histo, extractCount);
+  const res = quantizeByMedianCut(getColorRange(colors), histo, extractCount);
 
   return res;
 }
@@ -37,7 +45,37 @@ export function quantizeByPopularity(
   return res.slice(0, extractCount);
 }
 
-/** The vbox. We use an interface instead of a class. */
+export function quantizeByMedianCut(
+  vbox: ColorRange,
+  histo: ColorHistogram,
+  extractCount: number,
+): Color[] {
+  let nSteps = 0;
+  let i = 1;
+  while (i !== extractCount) {
+    i = i << 1;
+    nSteps += 1;
+  }
+  let res = [vbox];
+  while (nSteps > 0) {
+    const newRes = [];
+    let j = 0;
+    while (j < res.length) {
+      const split = medianCut(res[j], histo);
+      if (!split) {
+        j += 1;
+        continue;
+      }
+      newRes.push(...split);
+      j += 1;
+    }
+    res = newRes;
+    nSteps -= 1;
+  }
+  return res.map((x) => getAverageColor(x, histo));
+}
+
+/** The vbox */
 export interface ColorRange {
   r: { min: number; max: number };
   g: { min: number; max: number };
@@ -49,22 +87,253 @@ export function getColorRange(
   colors: Color[],
 ): ColorRange {
   const range = {
-    r: { min: 255, max: 0 },
-    g: { min: 255, max: 0 },
-    b: { min: 255, max: 0 },
+    r: { min: 1000, max: 0 },
+    g: { min: 1000, max: 0 },
+    b: { min: 1000, max: 0 },
   };
   let i = 0;
   while (i < colors.length) {
-    if (colors[i].r < range.r.min) range.r.min = colors[i].r;
-    if (colors[i].r > range.r.max) range.r.max = colors[i].r;
+    if ((colors[i].r >> 3) < range.r.min) range.r.min = colors[i].r >> 3;
+    if ((colors[i].r >> 3) > range.r.max) range.r.max = colors[i].r >> 3;
 
-    if (colors[i].g < range.g.min) range.g.min = colors[i].g;
-    if (colors[i].g > range.g.max) range.g.max = colors[i].g;
+    if ((colors[i].g >> 3) < range.g.min) range.g.min = colors[i].g >> 3;
+    if ((colors[i].g >> 3) > range.g.max) range.g.max = colors[i].g >> 3;
 
-    if (colors[i].b < range.b.min) range.b.min = colors[i].b;
-    if (colors[i].b > range.b.max) range.b.max = colors[i].b;
+    if ((colors[i].b >> 3) < range.b.min) range.b.min = colors[i].b >> 3;
+    if ((colors[i].b >> 3) > range.b.max) range.b.max = colors[i].b >> 3;
 
     i += 1;
   }
   return range;
+}
+
+export function getAverageColor(
+  vbox: ColorRange,
+  histo: ColorHistogram,
+): Color {
+  let total = 0;
+  let totalR = 0, totalG = 0, totalB = 0;
+  let ri = vbox.r.min;
+  while (ri <= vbox.r.max) {
+    let gi = vbox.g.min;
+    while (gi <= vbox.g.max) {
+      let bi = vbox.b.min;
+      while (bi <= vbox.b.max) {
+        const count = histo.getQuantized([ri, gi, bi]) || 0;
+        total += count;
+        totalR += count * (ri + 0.5) * 8;
+        totalG += count * (gi + 0.5) * 8;
+        totalB += count * (bi + 0.5) * 8;
+        bi += 1;
+      }
+      gi += 1;
+    }
+    ri += 1;
+  }
+  if (total) {
+    return new Color(
+      Math.trunc(totalR / total),
+      Math.trunc(totalG / total),
+      Math.trunc(totalB / total),
+      255,
+    );
+  }
+  // In case box is empty
+  return new Color(
+    Math.trunc(8 * (vbox.r.min + vbox.r.max + 1) / 2),
+    Math.trunc(8 * (vbox.g.min + vbox.g.max + 1) / 2),
+    Math.trunc(8 * (vbox.b.min + vbox.b.max + 1) / 2),
+    255,
+  );
+}
+
+/** Get number of colors in vbox */
+export function vboxSize(vbox: ColorRange, histo: ColorHistogram): number {
+  let count = 0;
+  let ri = vbox.r.min;
+  while (ri <= vbox.r.max) {
+    let gi = vbox.g.min;
+    while (gi <= vbox.g.max) {
+      let bi = vbox.b.min;
+      while (bi <= vbox.b.max) {
+        count += histo.get(new Color(ri, gi, bi, 255)) || 0;
+        bi += 1;
+      }
+      gi += 1;
+    }
+    ri += 1;
+  }
+  return count;
+}
+
+/** Cut vbox into two */
+export function medianCut(
+  vbox: ColorRange,
+  histo: ColorHistogram,
+): [ColorRange, ColorRange] | false {
+  const count = vboxSize(vbox, histo);
+
+  if (!count || count === 1) return false;
+  const rw = vbox.r.max - vbox.r.min + 1;
+  const gw = vbox.g.max - vbox.g.min + 1;
+  const bw = vbox.b.max - vbox.b.min + 1;
+
+  const axis = Math.max(rw, gw, bw);
+
+  // Find partial sums along each axis
+  const sumAlongAxis = [];
+  // avoid running another loop to compute sum
+  let totalSum = 0;
+  switch (axis) {
+    case rw: {
+      let i = vbox.r.min;
+      while (i <= vbox.r.max) {
+        let tempSum = 0;
+        let j = vbox.g.min;
+        while (j < vbox.g.max) {
+          let k = vbox.b.min;
+          while (k < vbox.b.max) {
+            tempSum += histo.getQuantized([i, j, k]) || 0;
+            k += 1;
+          }
+          j += 1;
+        }
+        totalSum += tempSum;
+        sumAlongAxis[i] = tempSum;
+        i += 1;
+      }
+      break;
+    }
+    case gw: {
+      let i = vbox.g.min;
+      while (i <= vbox.g.max) {
+        let tempSum = 0;
+        let j = vbox.r.min;
+        while (j < vbox.r.max) {
+          let k = vbox.b.min;
+          while (k < vbox.b.max) {
+            tempSum += histo.getQuantized([j, i, k]) || 0;
+            k += 1;
+          }
+          j += 1;
+        }
+        totalSum += tempSum;
+        sumAlongAxis[i] = tempSum;
+        i += 1;
+      }
+      break;
+    }
+    default: {
+      let i = vbox.b.min;
+      while (i <= vbox.b.max) {
+        let tempSum = 0;
+        let j = vbox.r.min;
+        while (j < vbox.r.max) {
+          let k = vbox.g.min;
+          while (k < vbox.g.max) {
+            tempSum += histo.getQuantized([j, k, i]) || 0;
+            k += 1;
+          }
+          j += 1;
+        }
+        totalSum += tempSum;
+        sumAlongAxis[i] = tempSum;
+        i += 1;
+      }
+      break;
+    }
+  }
+
+  // Apply median cut
+  switch (axis) {
+    case rw: {
+      let i = vbox.r.min;
+      while (i <= vbox.r.max) {
+        // Find the mid point through linear search
+        if (sumAlongAxis[i] < totalSum / 2) {
+          let cutAt = 0;
+          const vbox1 = {
+            r: { min: vbox.r.min, max: vbox.r.max },
+            g: { min: vbox.g.min, max: vbox.g.max },
+            b: { min: vbox.b.min, max: vbox.b.max },
+          };
+          const vbox2 = {
+            r: { min: vbox.r.min, max: vbox.r.max },
+            g: { min: vbox.g.min, max: vbox.g.max },
+            b: { min: vbox.b.min, max: vbox.b.max },
+          };
+          const left = i - vbox.r.min;
+          const right = vbox.r.max - i;
+          if (left <= right) {
+            cutAt = Math.min(vbox.r.max - 1, Math.trunc(i + right / 2));
+          } else cutAt = Math.max(vbox.r.min, Math.trunc(i - 1 - left / 2));
+          vbox1.r.max = cutAt;
+          vbox2.r.min = cutAt + 1;
+          return [vbox1, vbox2];
+        }
+        i += 1;
+      }
+      break;
+    }
+    case gw: {
+      let i = vbox.g.min;
+      while (i <= vbox.g.max) {
+        // Find the mid point through linear search
+        if (sumAlongAxis[i] < totalSum / 2) {
+          let cutAt = 0;
+          const vbox1 = {
+            r: { min: vbox.r.min, max: vbox.r.max },
+            g: { min: vbox.g.min, max: vbox.g.max },
+            b: { min: vbox.b.min, max: vbox.b.max },
+          };
+          const vbox2 = {
+            r: { min: vbox.r.min, max: vbox.r.max },
+            g: { min: vbox.g.min, max: vbox.g.max },
+            b: { min: vbox.b.min, max: vbox.b.max },
+          };
+          const left = i - vbox.g.min;
+          const right = vbox.g.max - i;
+          if (left <= right) {
+            cutAt = Math.min(vbox.g.max - 1, Math.trunc(i + right / 2));
+          } else cutAt = Math.max(vbox.g.min, Math.trunc(i - 1 - left / 2));
+          vbox1.g.max = cutAt;
+          vbox2.g.min = cutAt + 1;
+          return [vbox1, vbox2];
+        }
+        i += 1;
+      }
+      break;
+    }
+    default: {
+      let i = vbox.b.min;
+      while (i <= vbox.b.max) {
+        // Find the mid point through linear search
+        if (sumAlongAxis[i] < totalSum / 2) {
+          let cutAt = 0;
+          const vbox1 = {
+            r: { min: vbox.r.min, max: vbox.r.max },
+            g: { min: vbox.g.min, max: vbox.g.max },
+            b: { min: vbox.b.min, max: vbox.b.max },
+          };
+          const vbox2 = {
+            r: { min: vbox.r.min, max: vbox.r.max },
+            g: { min: vbox.g.min, max: vbox.g.max },
+            b: { min: vbox.b.min, max: vbox.b.max },
+          };
+          const left = i - vbox.b.min;
+          const right = vbox.b.max - i;
+          if (left <= right) {
+            cutAt = Math.min(vbox.b.max - 1, Math.trunc(i + right / 2));
+          } else cutAt = Math.max(vbox.b.min, Math.trunc(i - 1 - left / 2));
+          vbox1.b.max = cutAt;
+          vbox2.b.min = cutAt + 1;
+          return [vbox1, vbox2];
+        }
+        i += 1;
+      }
+      break;
+    }
+  }
+
+  return false;
 }
