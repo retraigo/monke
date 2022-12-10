@@ -1,8 +1,9 @@
-// USES Floyd–Steinberg Dithering algorithm
+import { Color, meanDistance } from "../deps/color.ts";
 
-import { Color, meanDistance } from "./mod.ts";
-
-/** Dither the image into monochrome */
+/** 
+ * Dither the image into monochrome 
+ * Uses Floyd-Steinberg matrix
+ */
 export function monochromeDither(pixels: Color[], width: number): Color[] {
   let i = 0;
   // pixels is an array of pixels with r, g, b values
@@ -50,8 +51,13 @@ function findClosestColor(color: Color, palette: Color[]): Color {
   return palette[closest.i];
 }
 
-/** Dither the image into a smaller palette */
-export function dither0(
+/** 
+ * Dither the image into a smaller palette 
+ * Very fast dithering
+ * Use twoRowSierra for more accuracy
+ * Use monochromeDither for monochrome dithering
+ */
+export function floydSteinbergDither(
   pixels: Color[],
   width: number,
   palette: Color[],
@@ -94,8 +100,11 @@ export function dither0(
   return pixels;
 }
 
-/** Dither the image into a smaller palette */
-export function dither(
+/** 
+ * Dither the image into a smaller palette
+ * Uses two-row Sierra matrix
+ */
+export function twoRowSierraDither(
   pixels: Color[],
   width: number,
   palette: Color[],
@@ -152,8 +161,12 @@ export function dither(
   return pixels;
 }
 
-/** Dither the image into a smaller palette */
-export function dither2(
+/** 
+ * Dither the image into a smaller palette
+ * Uses a quick, two-row dither 
+ * Use twoRowSierraDither for more accuracy
+ */
+export function quickDither(
   pixels: Color[],
   width: number,
   palette: Color[],
@@ -220,8 +233,12 @@ export function dither2(
   return pixels;
 }
 
-/** Dither the image into a smaller palette */
-export function dither3(
+/** 
+ * Dither the image into a smaller palette
+ * Starts from the mid point of the image
+ * I have no idea why I did this
+ */
+export function midPointDither(
   pixels: Color[],
   width: number,
   palette: Color[],

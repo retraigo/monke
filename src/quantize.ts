@@ -1,4 +1,5 @@
-import { Color, ColorHistogram, getHistogram, getPixels } from "./mod.ts";
+import { ColorHistogram, getHistogram, getPixels } from "./mod.ts";
+import { Color } from "../deps/color.ts";
 
 export async function getProminentColor(path: string, extractCount: number) {
   const { pixels: colors } = await getPixels(path);

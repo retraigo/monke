@@ -1,4 +1,4 @@
-import { Color } from "./mod.ts";
+import { Color } from "../deps/color.ts";
 
 /** 
  * Histogram of colors with reduced space 
