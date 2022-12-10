@@ -1,10 +1,2 @@
-test/a.png
-test/mod.ts
-.vscode/settings.json
-test/159.png
-test/160.png
-test/161.png
-test/162.png
-test/bad_apple.mp4
-test/bench.ts
-test/t.ts
+.vscode
+test
