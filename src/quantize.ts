@@ -63,7 +63,6 @@ export function quantizeByMedianCut(
 
     while (j < res.length) {
       const split = medianCut(res[j], histo);
-      console.log(typeof split)
       if (!split) {
         j += 1;
         continue;
