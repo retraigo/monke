@@ -161,12 +161,58 @@ export function twoRowSierraDither(
   return pixels;
 }
 
+
+/** 
+ * Dither the image into a smaller palette
+ * Uses Sierra lite matrix
+ * Use twoRowSierraDither for more accuracy
+ */
+export function quickDither(
+  pixels: Color[],
+  width: number,
+  palette: Color[],
+): Color[] {
+  let i = 0;
+  // pixels is an array of pixels with r, g, b values
+  // width is the width of the image in pixels
+  while (i < (pixels.length)) {
+    const newC = findClosestColor(pixels[i], palette);
+    const err = {
+      r: Math.floor((pixels[i].r - newC.r) >> 2),
+      g: Math.floor((pixels[i].r - newC.g) >> 2),
+      b: Math.floor((pixels[i].r - newC.b) >> 2),
+    };
+
+    // Match our quantized palette
+    pixels[i] = newC;
+
+    // Spread error to neighbouring pixels
+    if (i < pixels.length - 1) {
+      // Spread error to next pixel
+      pixels[i + 1].r += err.r << 1;
+      pixels[i + 1].g += err.g << 1;
+      pixels[i + 1].b += err.b << 1;
+      // Spread error to lower pixels
+      if (i < pixels.length - width - 1) {
+        pixels[i + width - 1].r += err.r;
+        pixels[i + width].r += err.r;
+        pixels[i + width - 1].g += err.g;
+        pixels[i + width].g += err.g;
+        pixels[i + width - 1].b += err.b;
+        pixels[i + width].b += err.b;
+      }
+    }
+    i += 1;
+  }
+  return pixels;
+}
+
 /** 
  * Dither the image into a smaller palette
  * Uses a quick, two-row dither 
  * Use twoRowSierraDither for more accuracy
  */
-export function quickDither(
+export function quickTwoRowDither(
   pixels: Color[],
   width: number,
   palette: Color[],
