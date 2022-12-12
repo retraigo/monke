@@ -1,4 +1,4 @@
-export { getProminentColor, reducePalette } from "./quantize.ts";
+export { getProminentColor, reducePalette, quantizeByMedianCut, quantizeByPopularity } from "./quantize.ts";
 
 export { ColorHistogram, getHistogram } from "./histogram.ts";
 
@@ -11,6 +11,7 @@ export {
   noDither,
   quickDither,
   twoRowSierraDither,
+  quickTwoRowDither,
 } from "./dither.ts";
 
 // For backwards compat. TODO: Remove soon
