@@ -8,7 +8,11 @@ const image = await getPixels(
 `,
 );
 
-image.invert()
+image.blur("box")
+image.blur("box")
+image.blur("box")
+image.blur("box")
+image.blur("box")
 
 const i = createCanvas(image.width, image.height);
 
