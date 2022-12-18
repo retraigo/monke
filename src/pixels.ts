@@ -7,7 +7,7 @@ import {
   createCanvas,
   loadImage,
 } from "https://deno.land/x/canvas@v1.4.1/mod.ts";
-import { Color } from "../deps/color.ts";
+import { Image } from "./image.ts";
 
 export async function getPixels(path: string) {
   const data = /https?:\/\/.+/.test(path)
@@ -21,19 +21,7 @@ export async function getPixels(path: string) {
 
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
   const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-  const colors: Color[] = new Array(d.length / 4);
-  let i = 0;
-
-  while (i < d.length) {
-    colors[i / 4] = new Color(
-      d[i],
-      d[i + 1],
-      d[i + 2],
-      d[i + 3],
-    );
-    i += 4;
-  }
-  return { pixels: colors, width: canvas.width };
+  return new Image(d, canvas.width, canvas.height)
 }
 
 async function getImageFromWeb(path: string) {
