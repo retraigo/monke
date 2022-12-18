@@ -2,7 +2,6 @@
 /// TypeScript port of Leptonica
 /// http://www.leptonica.org/
 
-
 import { ColorHistogram, getHistogram, getPixels } from "./mod.ts";
 import { Color } from "../deps/color.ts";
 
@@ -27,9 +26,9 @@ export function reducePalette(colors: Color[], extractCount: number): Color[] {
   const histo = getHistogram(colors);
 
   // Goodbye, popularity
-  //const res = quantizeByPopularity(histo, extractCount);
+  //  const res = quantizeByPopularity(histo, extractCount);
   const res = quantizeByMedianCut(getColorRange(colors), histo, extractCount);
-
+  
   return res;
 }
 
@@ -55,25 +54,57 @@ export function quantizeByMedianCut(
   histo: ColorHistogram,
   extractCount: number,
 ): Color[] {
+  const vboxes: ColorRange[] = [vbox];
 
-  let res = [vbox];
-  while (res.length < extractCount) {
-    const newRes = [];
-    let j = 0;
+  // Avoid an infinite loop
+  const maxIter = 1000;
+  let i = 0;
 
-    while (j < res.length) {
-      const split = medianCut(res[j], histo);
-      if (!split) {
-        j += 1;
-        continue;
-      }
-      newRes.push(...split);
-      j += 1;
+  const firstExtractCount = ~~(extractCount >> 1);
+  let generated = 1;
+
+  while (i < maxIter) {
+    const lastBox = vboxes.shift();
+    if (!lastBox) break; // This shouldn't happen
+    if (!vboxSize(lastBox, histo)) {
+      vboxes.push(lastBox);
+      i += 1;
+      continue;
     }
-    res = newRes;
+    const cut = medianCut(lastBox, histo);
+
+    if (cut) {
+      vboxes.push(cut[0], cut[1]);
+      generated += 1;
+    } else vboxes.push(lastBox);
+    if (generated >= firstExtractCount) break;
   }
-  res.sort((a, b) => vboxSize(b, histo) - vboxSize(a, histo))
-  return res.map((x) => getAverageColor(x, histo)).slice(0, extractCount);
+
+  vboxes.sort((a, b) =>
+    (vboxSize(b, histo) * vboxVolume(b)) - (vboxSize(a, histo) * vboxVolume(a))
+  );
+
+  const secondExtractCount = extractCount - vboxes.length;
+  i = 0;
+  generated = 1;
+
+  while (i < maxIter) {
+    const lastBox = vboxes.shift();
+    if (!lastBox) break; // This shouldn't happen
+    if (!vboxSize(lastBox, histo)) {
+      vboxes.push(lastBox);
+      i += 1;
+      continue;
+    }
+    const cut = medianCut(lastBox, histo);
+
+    if (cut) {
+      vboxes.push(cut[0], cut[1]);
+      generated += 1;
+    } else vboxes.push(lastBox);
+    if (generated >= secondExtractCount) break;
+  }
+  return vboxes.map((x) => getAverageColor(x, histo)).slice(0, extractCount);
 }
 
 /** The vbox */
@@ -167,6 +198,12 @@ export function vboxSize(vbox: ColorRange, histo: ColorHistogram): number {
   return count;
 }
 
+/** Get volume by dimensions of vbox */
+export function vboxVolume(vbox: ColorRange): number {
+  return ~~(vbox.r.max - vbox.r.min) * ~~(vbox.g.max - vbox.g.min) *
+    ~~(vbox.b.max - vbox.b.min);
+}
+
 /** Cut vbox into two */
 export function medianCut(
   vbox: ColorRange,
@@ -200,7 +237,7 @@ export function medianCut(
           j += 1;
         }
         totalSum += tempSum;
-        sumAlongAxis[i] = tempSum;
+        sumAlongAxis[i] = totalSum;
         i += 1;
       }
       break;
@@ -219,7 +256,7 @@ export function medianCut(
           j += 1;
         }
         totalSum += tempSum;
-        sumAlongAxis[i] = tempSum;
+        sumAlongAxis[i] = totalSum;
         i += 1;
       }
       break;
@@ -238,7 +275,7 @@ export function medianCut(
           j += 1;
         }
         totalSum += tempSum;
-        sumAlongAxis[i] = tempSum;
+        sumAlongAxis[i] = totalSum;
         i += 1;
       }
       break;
@@ -268,9 +305,12 @@ export function medianCut(
           if (left <= right) {
             cutAt = Math.min(vbox.r.max - 1, Math.trunc(i + right / 2));
           } else cutAt = Math.max(vbox.r.min, Math.trunc(i - 1 - left / 2));
+
+          while(!sumAlongAxis[cutAt]) cutAt += 1;
+
           vbox1.r.max = cutAt;
           vbox2.r.min = cutAt + 1;
-          return [vbox1, vbox2];
+          return [vbox1, vbox2]
         }
         i += 1;
       }
@@ -297,9 +337,12 @@ export function medianCut(
           if (left <= right) {
             cutAt = Math.min(vbox.g.max - 1, Math.trunc(i + right / 2));
           } else cutAt = Math.max(vbox.g.min, Math.trunc(i - 1 - left / 2));
+          while(!sumAlongAxis[cutAt]) cutAt += 1;
+
           vbox1.g.max = cutAt;
           vbox2.g.min = cutAt + 1;
-          return [vbox1, vbox2];
+          return [vbox1, vbox2]
+
         }
         i += 1;
       }
@@ -326,9 +369,12 @@ export function medianCut(
           if (left <= right) {
             cutAt = Math.min(vbox.b.max - 1, Math.trunc(i + right / 2));
           } else cutAt = Math.max(vbox.b.min, Math.trunc(i - 1 - left / 2));
+          while(!sumAlongAxis[cutAt]) cutAt += 1;
+
           vbox1.b.max = cutAt;
           vbox2.b.min = cutAt + 1;
-          return [vbox1, vbox2];
+          return [vbox1, vbox2]
+
         }
         i += 1;
       }
