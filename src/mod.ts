@@ -14,5 +14,7 @@ export {
   quickTwoRowDither,
 } from "./dither.ts";
 
+export { Image } from "./image.ts"
+
 // For backwards compat. TODO: Remove soon
 export { Color } from "../deps/color.ts";
