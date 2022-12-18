@@ -20,9 +20,11 @@ export function reducePalette(colors: Color[], extractCount: number): Color[] {
   if (extractCount > 256) {
     throw new RangeError("Cannot extract more than 256 colors.");
   }
+/*
   if ((extractCount & (extractCount - 1)) !== 0) {
     throw new RangeError("Extract count must be a power of two.");
   }
+  */
   const histo = getHistogram(colors);
 
   // Goodbye, popularity
@@ -104,7 +106,7 @@ export function quantizeByMedianCut(
     } else vboxes.push(lastBox);
     if (generated >= secondExtractCount) break;
   }
-  return vboxes.map((x) => getAverageColor(x, histo)).slice(0, extractCount);
+  return vboxes.map((x) => getAverageColor(x, histo)).slice(0, extractCount + 1);
 }
 
 /** The vbox */
