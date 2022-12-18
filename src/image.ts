@@ -6,6 +6,7 @@ import {
   quickDither,
   quickTwoRowDither,
   twoRowSierraDither,
+  monochromeDither
 } from "./dither.ts";
 
 export interface DitherOptions {
@@ -14,6 +15,9 @@ export interface DitherOptions {
 
 export type BlurType = "box";
 
+/**
+ * Image with width, height, and pixel data
+ */
 export class Image {
   pixels: Color[];
   width: number;
@@ -41,6 +45,7 @@ export class Image {
       i += 4;
     }
   }
+  /** Blur the image. Currently only supports box blur. */
   blur(method: BlurType) {
     switch (method) {
       case "box": {
@@ -125,6 +130,7 @@ export class Image {
       }
     }
   }
+  /** Recolor the image with dithering */
   dither(
     palette: Color[],
     options: DitherOptions = { method: "monke" },
@@ -151,6 +157,7 @@ export class Image {
       }
     }
   }
+  /** Make the image grayscale */
   grayscale(): void {
     let i = 0;
     while (i < this.pixels.length) {
@@ -158,6 +165,7 @@ export class Image {
       i += 1;
     }
   }
+  /** Invert colors in the image */
   invert(): void {
     let i = 0;
     while (i < this.pixels.length) {
@@ -165,9 +173,15 @@ export class Image {
       i += 1;
     }
   }
+  /** Recolor the image using just black and white */
+  monochrome(): void {
+    monochromeDither(this.pixels, this.width)
+  }
+  /** Recolor the image without dithering */
   recolor(palette: Color[]) {
     noDither(this.pixels, palette);
   }
+  /** Convert to an ImageData object */
   toImageData(): { data: Uint8ClampedArray; width: number; height: number } {
     const data = new Uint8ClampedArray(this.pixels.length * 4);
     let i = 0;
