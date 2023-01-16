@@ -2,11 +2,11 @@ import { Color } from "../deps/color.ts";
 
 import {
   floydSteinbergDither,
+  monochromeDither,
   noDither,
   quickDither,
   quickTwoRowDither,
   twoRowSierraDither,
-  monochromeDither
 } from "./dither.ts";
 
 export interface DitherOptions {
@@ -15,10 +15,16 @@ export interface DitherOptions {
 
 export type BlurType = "box";
 
+export interface ImageData {
+  data: Uint8ClampedArray;
+  width: number;
+  height: number;
+}
+
 /**
  * Image with width, height, and pixel data
  */
-export class Image {
+export class Image implements ImageData {
   pixels: Color[];
   width: number;
   height: number;
@@ -175,14 +181,17 @@ export class Image {
   }
   /** Recolor the image using just black and white */
   monochrome(): void {
-    monochromeDither(this.pixels, this.width)
+    monochromeDither(this.pixels, this.width);
   }
   /** Recolor the image without dithering */
   recolor(palette: Color[]) {
     noDither(this.pixels, palette);
   }
   /** Convert to an ImageData object */
-  toImageData(): { data: Uint8ClampedArray; width: number; height: number } {
+  toImageData(): ImageData {
+    return { data: this.data, width: this.width, height: this.height };
+  }
+  get data(): Uint8ClampedArray {
     const data = new Uint8ClampedArray(this.pixels.length * 4);
     let i = 0;
 
@@ -194,6 +203,6 @@ export class Image {
       data[i + 3] = c.a;
       i += 4;
     }
-    return { data, width: this.width, height: this.height };
+    return data;
   }
 }
