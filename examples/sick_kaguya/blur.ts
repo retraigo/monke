@@ -5,7 +5,7 @@ const __dirname = new URL(".", import.meta.url).pathname;
 
 const image = await getPixels(`${__dirname}/a.png`);
 
-image.monochrome(true)
+image.blur("box");
 
 const i = createCanvas(image.width, image.height);
 
@@ -15,4 +15,4 @@ const data = image.toImageData();
 
 ctx.putImageData(data, 0, 0);
 
-Deno.writeFileSync(`${__dirname}/monochrome_kaguya.png`, i.toBuffer("image/png"));
+Deno.writeFileSync(`${__dirname}/blur_kaguya.png`, i.toBuffer("image/png"));
