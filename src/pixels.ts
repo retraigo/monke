@@ -1,13 +1,13 @@
 import {
   contentType,
   parseMediaType,
-} from "https://deno.land/std@0.163.0/media_types/mod.ts";
+} from "https://deno.land/std@0.181.0/media_types/mod.ts";
 
 import {
   createCanvas,
   loadImage,
 } from "https://deno.land/x/canvas@v1.4.1/mod.ts";
-import { Image } from "./image.ts";
+import { Image } from "./structures/image.ts";
 
 export async function getPixels(path: string) {
   const data = /https?:\/\/.+/.test(path)
