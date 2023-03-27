@@ -1,4 +1,4 @@
-import { getPixels, quantizeByPopularity, Color } from "../../src/mod.ts";
+import { getPixels, Color } from "../../src/mod.ts";
 const __dirname = new URL(".", import.meta.url).pathname;
 import { createCanvas } from "https://deno.land/x/canvas@v1.4.1/mod.ts";
 
@@ -9,13 +9,6 @@ const methods = [
   "quick",
   "bidirectional",
 ];
-
-const img = await getPixels(
-  `${__dirname}/a.png`,
-);
-
-// I know this doesn't work, but it suits the job
-const palette = quantizeByPopularity(img.pixels, 16);
 
 for (const method of methods) {
   const image = await getPixels(`${__dirname}/a.png`);
