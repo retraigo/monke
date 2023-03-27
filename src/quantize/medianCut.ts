@@ -3,7 +3,7 @@ import { Color } from "../../deps/color.ts";
 import { getAverageColor, getColorRange } from "./common.ts";
 import type { ColorRange } from "./common.ts";
 
-export function quantizeBymedianCut(
+export function quantizeByMedianCut(
   pixels: Color[],
   extractCount: number,
 ): Color[] {

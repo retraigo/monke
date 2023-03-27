@@ -1,4 +1,4 @@
-import { Color } from "../mod.ts";
+import { Color } from "../../deps/color.ts";
 
 export function boxBlur(image: { pixels: Color[]; width: number }) {
   let i = 0;

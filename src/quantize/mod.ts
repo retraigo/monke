@@ -1,3 +1,3 @@
-export { quantizeBymedianCut } from "./medianCut.ts";
+export { quantizeByMedianCut } from "./medianCut.ts";
 
 export { quantizeByPopularity } from "./popularity.ts";
