@@ -3,8 +3,9 @@ import { findClosestColor } from "../util/closest.ts";
 
 /**
  * Dither the image into a smaller palette
- * Uses a quick, two-row dither
- * Use twoRowSierraDither for more accuracy
+ * Uses a quick, two-row dither.
+ * Creates a column pattern. Use Floyd-Steinberg 
+ * or Sierra to avoid patterns.
  */
 export function quick2(
   pixels: Color[],
