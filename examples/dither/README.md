@@ -1,0 +1,1 @@
+All examples are dithered with just Black and White.

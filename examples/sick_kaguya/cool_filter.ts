@@ -3,23 +3,24 @@ import { Color, getPixels } from "../../mod.ts";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
-const pixels = await getPixels(`${__dirname}/a.png`);
+const image = await getPixels(`${__dirname}/a.png`);
 
-const newImg = pixels.pixels.map(x => {
-  const r = x.r;
-  const g = x.g;
-  const b = x.b;
-  const c = new Color(Math.trunc(Math.pow(b, 1.5) / b) % 256, Math.trunc(g * 1.1010101010101) % 256, Math.trunc(r * 1.0101010101) % 256, x.a)
-  return c
-})
+// image.map((c) => new Color(c.b, Math.trunc(c.g / 2), c.r, c.a));
+image.map(({ r, g, b, a }) =>
+  new Color(
+    Math.trunc(Math.pow(b, 1.5) / b) % 256,
+    Math.trunc(g * 1.1010101010101) % 256,
+    Math.trunc(r * 1.0101010101) % 256,
+    a,
+  )
+);
 
-const i = createCanvas(pixels.width, pixels.pixels.length / pixels.width);
+const i = createCanvas(image.width, image.height);
 
 const ctx = i.getContext("2d");
 
-const res = Uint8ClampedArray.from(
-  newImg.map(x => [x.r, x.g, x.b, x.a]).flat(),
-);
-ctx.putImageData({ data: res, width: i.width, height: i.height }, 0, 0);
+const data = image.toImageData();
+
+ctx.putImageData(data, 0, 0);
 
 Deno.writeFileSync(`${__dirname}/cool_kaguya.png`, i.toBuffer("image/png"));

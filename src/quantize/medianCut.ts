@@ -1,57 +1,18 @@
-/// Uses Modified Median Cut Algorithm
-/// TypeScript port of Leptonica
-/// http://www.leptonica.org/
-
-import { ColorHistogram, getHistogram, getPixels } from "./mod.ts";
-import { Color } from "../deps/color.ts";
-
-export async function getProminentColor(path: string, extractCount: number) {
-  const { pixels: colors } = await getPixels(path);
-  return reducePalette(colors, extractCount);
-}
-
-export function reducePalette(colors: Color[], extractCount: number): Color[] {
-  if (!colors.length) {
-    throw new RangeError("There must be at least one color in the palette.");
-  }
-  if (extractCount < 2) {
-    throw new RangeError("Cannot extract less than two colors.");
-  }
-  if (extractCount > 256) {
-    throw new RangeError("Cannot extract more than 256 colors.");
-  }
-/*
-  if ((extractCount & (extractCount - 1)) !== 0) {
-    throw new RangeError("Extract count must be a power of two.");
-  }
-  */
-  const histo = getHistogram(colors);
-
-  // Goodbye, popularity
-  //  const res = quantizeByPopularity(histo, extractCount);
-  const res = quantizeByMedianCut(getColorRange(colors), histo, extractCount);
-  
-  return res;
-}
-
-export function quantizeByPopularity(
-  histo: ColorHistogram,
-  extractCount: number,
-): Color[] {
-  const result: [number, number][] = [];
-
-  histo.raw.forEach((v, i) => {
-    if (v) result.push([i, v]);
-  });
-
-  result.sort((a, b) => b[1] - a[1]);
-
-  const res = result.map((x) => ColorHistogram.getColor(x[0]));
-
-  return res.slice(0, extractCount);
-}
+import { ColorHistogram, getHistogram } from "../mod.ts";
+import { Color } from "../../deps/color.ts";
+import { getAverageColor, getColorRange } from "./common.ts";
+import type { ColorRange } from "./common.ts";
 
 export function quantizeByMedianCut(
+  pixels: Color[],
+  extractCount: number,
+): Color[] {
+  const vbox = getColorRange(pixels);
+  const histo = getHistogram(pixels);
+  return quantize(vbox, histo, extractCount);
+}
+
+function quantize(
   vbox: ColorRange,
   histo: ColorHistogram,
   extractCount: number,
@@ -73,7 +34,7 @@ export function quantizeByMedianCut(
       i += 1;
       continue;
     }
-    const cut = medianCut(lastBox, histo);
+    const cut = medianCutApply(lastBox, histo);
 
     if (cut) {
       vboxes.push(cut[0], cut[1]);
@@ -88,7 +49,7 @@ export function quantizeByMedianCut(
 
   const secondExtractCount = extractCount - vboxes.length;
   i = 0;
-  generated = 1;
+  generated = 0;
 
   while (i < maxIter) {
     const lastBox = vboxes.shift();
@@ -98,7 +59,7 @@ export function quantizeByMedianCut(
       i += 1;
       continue;
     }
-    const cut = medianCut(lastBox, histo);
+    const cut = medianCutApply(lastBox, histo);
 
     if (cut) {
       vboxes.push(cut[0], cut[1]);
@@ -106,83 +67,12 @@ export function quantizeByMedianCut(
     } else vboxes.push(lastBox);
     if (generated >= secondExtractCount) break;
   }
-  return vboxes.map((x) => getAverageColor(x, histo)).slice(0, extractCount + 1);
-}
-
-/** The vbox */
-export interface ColorRange {
-  r: { min: number; max: number };
-  g: { min: number; max: number };
-  b: { min: number; max: number };
-}
-
-/** Get the minimum and maximum RGB values. */
-export function getColorRange(
-  colors: Color[],
-): ColorRange {
-  const range = {
-    r: { min: 1000, max: 0 },
-    g: { min: 1000, max: 0 },
-    b: { min: 1000, max: 0 },
-  };
-  let i = 0;
-  while (i < colors.length) {
-    if ((colors[i].r >> 3) < range.r.min) range.r.min = colors[i].r >> 3;
-    if ((colors[i].r >> 3) > range.r.max) range.r.max = colors[i].r >> 3;
-
-    if ((colors[i].g >> 3) < range.g.min) range.g.min = colors[i].g >> 3;
-    if ((colors[i].g >> 3) > range.g.max) range.g.max = colors[i].g >> 3;
-
-    if ((colors[i].b >> 3) < range.b.min) range.b.min = colors[i].b >> 3;
-    if ((colors[i].b >> 3) > range.b.max) range.b.max = colors[i].b >> 3;
-
-    i += 1;
-  }
-  return range;
-}
-
-export function getAverageColor(
-  vbox: ColorRange,
-  histo: ColorHistogram,
-): Color {
-  let total = 0;
-  let totalR = 0, totalG = 0, totalB = 0;
-  let ri = vbox.r.min;
-  while (ri <= vbox.r.max) {
-    let gi = vbox.g.min;
-    while (gi <= vbox.g.max) {
-      let bi = vbox.b.min;
-      while (bi <= vbox.b.max) {
-        const count = histo.getQuantized([ri, gi, bi]) || 0;
-        total += count;
-        totalR += count * (ri + 0.5) * 8;
-        totalG += count * (gi + 0.5) * 8;
-        totalB += count * (bi + 0.5) * 8;
-        bi += 1;
-      }
-      gi += 1;
-    }
-    ri += 1;
-  }
-  if (total) {
-    return new Color(
-      Math.trunc(totalR / total),
-      Math.trunc(totalG / total),
-      Math.trunc(totalB / total),
-      255,
-    );
-  }
-  // In case box is empty
-  return new Color(
-    Math.trunc(8 * (vbox.r.min + vbox.r.max + 1) / 2),
-    Math.trunc(8 * (vbox.g.min + vbox.g.max + 1) / 2),
-    Math.trunc(8 * (vbox.b.min + vbox.b.max + 1) / 2),
-    255,
-  );
+  vboxes.sort((a, b) => vboxSize(b, histo) - vboxSize(a, histo));
+  return vboxes.map((x) => getAverageColor(x, histo)).slice(0, extractCount);
 }
 
 /** Get number of colors in vbox */
-export function vboxSize(vbox: ColorRange, histo: ColorHistogram): number {
+function vboxSize(vbox: ColorRange, histo: ColorHistogram): number {
   let count = 0;
   let ri = vbox.r.min;
   while (ri <= vbox.r.max) {
@@ -201,13 +91,13 @@ export function vboxSize(vbox: ColorRange, histo: ColorHistogram): number {
 }
 
 /** Get volume by dimensions of vbox */
-export function vboxVolume(vbox: ColorRange): number {
+function vboxVolume(vbox: ColorRange): number {
   return ~~(vbox.r.max - vbox.r.min) * ~~(vbox.g.max - vbox.g.min) *
     ~~(vbox.b.max - vbox.b.min);
 }
 
 /** Cut vbox into two */
-export function medianCut(
+function medianCutApply(
   vbox: ColorRange,
   histo: ColorHistogram,
 ): [ColorRange, ColorRange] | false {
@@ -308,11 +198,11 @@ export function medianCut(
             cutAt = Math.min(vbox.r.max - 1, Math.trunc(i + right / 2));
           } else cutAt = Math.max(vbox.r.min, Math.trunc(i - 1 - left / 2));
 
-          while(!sumAlongAxis[cutAt]) cutAt += 1;
+          while (!sumAlongAxis[cutAt]) cutAt += 1;
 
           vbox1.r.max = cutAt;
           vbox2.r.min = cutAt + 1;
-          return [vbox1, vbox2]
+          return [vbox1, vbox2];
         }
         i += 1;
       }
@@ -339,12 +229,11 @@ export function medianCut(
           if (left <= right) {
             cutAt = Math.min(vbox.g.max - 1, Math.trunc(i + right / 2));
           } else cutAt = Math.max(vbox.g.min, Math.trunc(i - 1 - left / 2));
-          while(!sumAlongAxis[cutAt]) cutAt += 1;
+          while (!sumAlongAxis[cutAt]) cutAt += 1;
 
           vbox1.g.max = cutAt;
           vbox2.g.min = cutAt + 1;
-          return [vbox1, vbox2]
-
+          return [vbox1, vbox2];
         }
         i += 1;
       }
@@ -371,12 +260,11 @@ export function medianCut(
           if (left <= right) {
             cutAt = Math.min(vbox.b.max - 1, Math.trunc(i + right / 2));
           } else cutAt = Math.max(vbox.b.min, Math.trunc(i - 1 - left / 2));
-          while(!sumAlongAxis[cutAt]) cutAt += 1;
+          while (!sumAlongAxis[cutAt]) cutAt += 1;
 
           vbox1.b.max = cutAt;
           vbox2.b.min = cutAt + 1;
-          return [vbox1, vbox2]
-
+          return [vbox1, vbox2];
         }
         i += 1;
       }
