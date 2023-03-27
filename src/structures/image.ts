@@ -6,6 +6,7 @@ import {
   bidirectional,
   floydSteinberg,
   monochromeFs,
+  monochromeQ,
   quick2,
   sierra2,
   sierraLite,
@@ -128,9 +129,15 @@ export class Image implements ImageData {
     }
   }
   /** Recolor the image using just black and white */
-  monochrome(dither = false): void {
-    if (dither) monochromeFs(this.pixels, this.width);
-    else this.recolor([new Color("#000000"), new Color("#ffffff")]);
+  monochrome(
+    dither = false,
+    ditherMode: "floyd_steinberg" | "quick" = "floyd_steinberg",
+  ): void {
+    if (dither) {
+      ditherMode === "floyd_steinberg"
+        ? monochromeFs(this.pixels, this.width)
+        : monochromeQ(this.pixels, this.width);
+    } else this.recolor([new Color("#000000"), new Color("#ffffff")]);
   }
   /** Recolor the image without dithering */
   recolor(palette: Color[]) {

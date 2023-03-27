@@ -180,3 +180,52 @@ export function bidirectional(
   }
   return pixels;
 }
+
+/**
+ * Dither the image into monochrome
+ * Uses the same matrix as above
+ */
+export function monochromeQ(pixels: Color[], width: number): Color[] {
+  let i = pixels.length - 1;
+  const twoW = width << 2;
+
+  // pixels is an array of pixels with r, g, b values
+  // width is the width of the image in pixels
+  while (i >= 0) {
+    // We shall use "black" and "white" as our quantized palette
+    const newR = pixels[i].r < 129 ? 0 : 255;
+    const err = { r: Math.floor((pixels[i].r - newR) / 16) };
+
+    // Match our quantized palette
+    pixels[i].r = newR;
+
+    // Spread error to neighbouring pixels
+    if (i >= 1) {
+      // Spread error to next pixel
+      pixels[i - 1].r += err.r * 4;
+      if (i >= 2) {
+        // Spread error to next pixel
+        pixels[i - 2].r += err.r * 2;
+        // Spread error to lower pixels
+        const k = i - width;
+        if (k >= 2) {
+          const k = i - width;
+          pixels[k - 2].r += err.r;
+          pixels[k - 1].r += err.r * 2;
+          pixels[k].r += err.r * 2;
+          pixels[k + 1].r += err.r * 2;
+          pixels[k + 2].r += err.r;
+
+          if (i >= twoW + 1) {
+            pixels[i - twoW + 1].r += err.r * 2;
+          }
+        }
+      }
+    }
+
+    // Convert our color to black or white completely
+    pixels[i].b = pixels[i].g = pixels[i].r;
+    i -= 1;
+  }
+  return pixels;
+}
