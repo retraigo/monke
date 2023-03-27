@@ -1,11 +1,11 @@
 import { createCanvas } from "https://deno.land/x/canvas@v1.4.1/mod.ts";
-import { getPixels, quantizeBymedianCut } from "../../mod.ts";
+import { getPixels, quantizeByMedianCut } from "../../mod.ts";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
 const image = await getPixels(`${__dirname}/a.png`);
 
-image.recolor(quantizeBymedianCut(image.pixels, 32));
+image.recolor(quantizeByMedianCut(image.pixels, 32));
 
 const i = createCanvas(image.width, image.height);
 
