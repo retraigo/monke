@@ -27,7 +27,7 @@ export interface ImageData {
   data: Uint8ClampedArray;
   width: number;
   height: number;
-  colorSpace: "sRGB";
+  colorSpace: "srgb";
 }
 
 /**
@@ -37,7 +37,7 @@ export class Image implements ImageData {
   pixels: Color[];
   width: number;
   height: number;
-  colorSpace: "sRGB" = "sRGB";
+  colorSpace: "srgb" = "srgb";
   constructor(pixels: Uint8ClampedArray, width: number, height?: number) {
     if (!height) height = pixels.length / width;
     if (width !== Math.trunc(width) || width <= 0) {
