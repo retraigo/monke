@@ -1,5 +1,6 @@
 import { Color } from "../../deps/color.ts";
 
+/** Box blur with r = 3 */
 export function boxBlur(image: { pixels: Color[]; width: number }) {
   let i = 0;
   // pixels is an array of pixels with r, g, b values

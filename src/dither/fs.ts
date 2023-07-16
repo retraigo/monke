@@ -5,7 +5,7 @@ import { findClosestColor } from "../util/closest.ts";
  * Dither the image into a smaller palette
  * Very fast dithering
  * Use twoRowSierra for more accuracy
- * Use monochromeDither for monochrome dithering
+ * Use monochromeFs for monochrome dithering
  */
 export function floydSteinberg(
   pixels: Color[],
