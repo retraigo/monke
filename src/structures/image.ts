@@ -27,17 +27,22 @@ export interface ImageData {
   data: Uint8ClampedArray;
   width: number;
   height: number;
-  colorSpace: "sRGB";
+  channels: number; // always 4, for compat with retraigo/vectorizer
+  colorSpace: "srgb" | "display-p3";
 }
 
 /**
  * Image with width, height, and pixel data
+ * All methods mutate the image itself
  */
 export class Image implements ImageData {
   pixels: Color[];
   width: number;
   height: number;
-  colorSpace: "sRGB" = "sRGB";
+  /** Canvas ImageData always returns RGBA values */
+  channels = 4; 
+  /** We are only gonna work with sRGB images */
+  colorSpace: "srgb" = "srgb";
   constructor(pixels: Uint8ClampedArray, width: number, height?: number) {
     if (!height) height = pixels.length / width;
     if (width !== Math.trunc(width) || width <= 0) {
@@ -149,9 +154,11 @@ export class Image implements ImageData {
       data: this.data,
       width: this.width,
       height: this.height,
+      channels: this.channels,
       colorSpace: this.colorSpace,
     };
   }
+  /** Get a Uint8ClampedArray with RGBA values */
   get data(): Uint8ClampedArray {
     const data = new Uint8ClampedArray(this.pixels.length * 4);
     let i = 0;
