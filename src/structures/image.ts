@@ -40,7 +40,7 @@ export class Image implements ImageData {
   width: number;
   height: number;
   /** Canvas ImageData always returns RGBA values */
-  channels = 4; 
+  channels = 4;
   /** We are only gonna work with sRGB images */
   colorSpace: "srgb" = "srgb";
   constructor(pixels: Uint8ClampedArray, width: number, height?: number) {
@@ -170,6 +170,17 @@ export class Image implements ImageData {
       data[i + 2] = c.b;
       data[i + 3] = c.a;
       i += 4;
+    }
+    return data;
+  }
+  /** Get a Uint8ClampedArray of the grayscale image with RGBA values */
+  get grayscaleData(): Uint8ClampedArray {
+    const data = new Uint8ClampedArray(this.pixels.length);
+    let i = 0;
+    while (i < data.length) {
+      const c = this.pixels[i];
+      data[i] = c.grayscale.r;
+      i += 1;
     }
     return data;
   }
